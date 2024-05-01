@@ -1,4 +1,5 @@
 #include "ImageProcessor.h"
+using namespace std;
 
 void ImageProcessor::CreateEmpty(std::string filename, int ncols, int nrows, int N){
     if(IsStored(filename)){
@@ -109,41 +110,59 @@ void ImageProcessor::ProduceImage(std::string stored) {
     outFile.close();
 }
 
-void ImageProcessor::addSegment(std::string stored, std::vector<int> start, std::vector<int> end, int color) {
+void ImageProcessor::addSegment(std::string stored, std::vector<int> start, std::vector<int> end, int color, int
+size, string cluster_orientation) {
     if (!IsStored(stored)) {
         std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
         return;
     }
+
     if (start.size() != 2 || end.size() != 2) {
         std::cout << "Error: Invalid start or end points." << std::endl;
         return;
     }
 
-    // Organize points by order
-    if (start[0] > end[0]) {
-        std::swap(start[0], end[0]);
-        std::swap(start[1], end[1]);
+    //////////////// X IN THE MATRIX CORRESPONDS TO -Y CARTESIAN /////////////////////////////
+    //////////////// Y IN THE MATRIX CORRESPONDES TO X CARTESIAN /////////////////////////////
+    ////////////////  CORRESPONDES TO A ROTATION OF -90 DEGREES  /////////////////////////////
+    // AN AUXILIARY FUNCTION WAS CREATED TO TAKE A POINT IN CARTESIAN AND DRAW IT IN MATRIX //
+
+    int xi = start[0];
+    int yi = start[1];
+    int xf = end[0];
+    int yf = end[1];
+    if(xi>xf){
+        xi = end[0];
+        yi = end[1];
+        xf = start[0];
+        yf = start[1];
     }
 
-    // Change the values from Cartesian to the matrix orientation
-    start[1] = ImageStorage[stored].nrows - start[1];
-    end[1] = ImageStorage[stored].nrows - end[1];
+    double slope=0;
+    if(xf-xi!=0){slope= static_cast<double> (yf-yi)/(xf-xi);}
 
-    // Calculate slope (m) and y-intercept (b) of the line
-    float slope = static_cast<float>(end[1] - start[1]) / (end[0] - start[0]);
-    float intercept = start[1] - slope * start[0];
-
-    // Update pixel values along the line segment
-    for (int x = start[0]; x <= end[0]; x++) {
-        // Calculate y value for the current x value using the line equation y = mx + b
-        int y = static_cast<int>(slope * x + intercept); // Round to nearest integer
-        // Update the pixel value at (x, y) with the specified color
-        ImageStorage[stored].C[x][y] = color; // Note the change in indexing order
-        //std::cout << "(x,y): " << x << " || " << y << std::endl;
+    double x = xi;
+    double y = yi;
+    if(abs(slope)<=1){
+        while (x <= xf) {
+            for(int z=x-size/2;z<=x+size/2;z++){
+                std::vector<int> c = {z,y};
+                std::vector<int> m = cart_to_matrix(ImageStorage[stored].nrows, c);
+                ImageStorage[stored].C[m[0]][m[1]] = color;}
+            x++;
+            y=(x-xi)*slope+yi;
+        }
     }
-
-    //PrintColorCoordinates("A", 0);
-
+    if(abs(slope)>1){
+        while (x <= xf) {
+            for(int z=x-size/2;z<=x+size/2;z++){
+                std::vector<int> c = {z,y};
+                std::vector<int> m = cart_to_matrix(ImageStorage[stored].nrows, c);
+                ImageStorage[stored].C[m[0]][m[1]] = color;}
+            x+=1/abs(slope);
+            y+=slope/abs(slope);
+        }
+    }
 }
 
 void ImageProcessor::SaltAndPepper(std::string stored, int p, std::string filename){
@@ -379,4 +398,12 @@ void ImageProcessor::PrintColorCoordinates(std::string stored, int color){
             if(ImageStorage[stored].C[col][row] == color){std::cout << "{ " << col << " , " << row << " } " << std::endl;}
         }
     }
+}
+
+std::vector<int> ImageProcessor::cart_to_matrix(int nrows, std::vector<int> c){
+    // takes a point in cartesian and returns the corresponding point in the image matrix
+    std::vector<int> m;
+    m.push_back(nrows - c[1]);
+    m.push_back(c[0]);
+    return m;
 }

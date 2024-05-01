@@ -11,6 +11,8 @@
 
 #include "PlotsMaker.h"
 
+using namespace std;
+
 struct Image;
 
 class ImageProcessor{
@@ -24,7 +26,8 @@ class ImageProcessor{
         void InvertColors(std::string stored, std::string filename);
         void ImageSum(std::string img1, std::string img2, std::string result);
         void ProduceImage(std::string stored);
-        void addSegment(std::string stored, std::vector<int> start, std::vector<int> end, int color=0); //not working properly
+        void addSegment(std::string stored, std::vector<int> start, std::vector<int> end, int color=0, int
+size=2, string cluster_orientation="H"); //not working properly
         void SaltAndPepper(std::string stored, int p, std::string filename);
         void GaussianNoise(std::string stored, double stdv, std::string filename);
 
@@ -45,7 +48,8 @@ class ImageProcessor{
         bool GenerateRandomBool(int p);
         int GetRandomExtreme(int N); //N to know what is the white color
         double Gaussian(double stdv);
-        void PrintColorCoordinates(std::string stored, int color); 
+        void PrintColorCoordinates(std::string stored, int color);
+        std::vector<int> cart_to_matrix(int nrows, std::vector<int> c);
 
 
         std::map<std::string, Image> ImageStorage; //filename->Image

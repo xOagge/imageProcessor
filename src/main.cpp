@@ -1,6 +1,8 @@
 #include <iostream>
 #include "ImageProcessor.h"
 
+using namespace std;
+
 int main(){
     ImageProcessor Proc;
 
@@ -12,10 +14,16 @@ int main(){
     Proc.ProduceImage("White_Glassware");
 
     //segments-------------------------------
-    Proc.CreateEmpty("A", 300 , 400, 255);
-    std::vector<int> P1 = {10,10};
-    std::vector<int> P2 = {200,250};
+    Proc.CreateEmpty("A", 256 , 256, 255);
+    std::vector<int> P1 = {68,28};
+    std::vector<int> P2 = {128,228};
+    std::vector<int> P3 = {188,28};
+    std::vector<int> P4 = {98,128};
+    std::vector<int> P5 = {158,128};//
     Proc.addSegment("A", P1, P2);
+    Proc.addSegment("A", P3, P2);
+    Proc.addSegment("A", P1, P2);
+    Proc.addSegment("A", P4, P5);
     Proc.ProduceImage("A");
 
     //SaltAndPepper-------------------------------
