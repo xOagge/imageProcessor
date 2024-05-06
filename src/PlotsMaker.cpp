@@ -71,7 +71,7 @@ void PlotsMaker::MakeHistogram2D(std::vector<std::vector<int>> info, std::string
     // Fill the histogram with the info
     for (int col = 0; col < nx; col++) {
         for (int row = 0; row < ny; row++) {
-            hist2D->SetBinContent(col+1, row+1, info[col][row]);
+            hist2D->Fill(col+0.5, ny-row+0.5, info[col][row]);
         }
     }
 
@@ -79,9 +79,10 @@ void PlotsMaker::MakeHistogram2D(std::vector<std::vector<int>> info, std::string
     int count = 0;
     for (int col = 0; col < nx; col++) {
         for (int row = 0; row < ny; row++) {
-            if(info[col][row] == hist2D->GetBinContent(col+1, row+1)){count += 1;}
+            if(info[col][row] == hist2D->GetBinContent(row+1, ny-col+1)){count += 1;}
         }
     }
+    
     std::cout << "TOTAL EQUALITY: " << (double)count/(double)total << std::endl;
 
 

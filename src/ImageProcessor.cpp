@@ -33,12 +33,11 @@ void ImageProcessor::ReadImage(std::string filename){
     image.C.resize(image.ncols, std::vector<int>(image.nrows, 0));
 
     // Read pixel values
-    for (int col = 0; col < image.ncols; col++) {
-        for (int row = 0; row < image.nrows; row++) {
+    for (int row = 0; row < image.nrows; row++) {
+        for (int col = 0; col < image.ncols; col++) {
             inFile >> image.C[col][row];
         }
     }
-
     inFile.close();
     ImageStorage[filename] = image; //store image information
 }
@@ -86,7 +85,7 @@ void ImageProcessor::ProduceImage(std::string stored) {
     }
 
     Image image = ImageStorage[stored];
-    
+
     std::ofstream outFile("../res/" + stored + ".pgm", std::ios::binary);
     if (!outFile) {
         std::cerr << "Error: Unable to open file '" << stored << ".pgm' for writing." << std::endl;
@@ -99,9 +98,9 @@ void ImageProcessor::ProduceImage(std::string stored) {
     outFile << image.N << std::endl;
 
     // Write pixel data to the file
-    for (const auto& row : image.C) {
-        for (int pixel : row) {
-            outFile << pixel << " ";
+    for (int row = 0; row < image.nrows; row++) {
+        for (int col = 0; col < image.ncols; col++) {
+            outFile << image.C[col][row] << " ";
         }
         outFile << std::endl; // Newline after each row
     }
@@ -148,7 +147,7 @@ size, string cluster_orientation) {
             for(int z=x-size/2;z<=x+size/2;z++){
                 std::vector<int> c = {z,y};
                 std::vector<int> m = cart_to_matrix(ImageStorage[stored].nrows, c);
-                ImageStorage[stored].C[m[0]][m[1]] = color;}
+                ImageStorage[stored].C[m[1]][m[0]] = color;}
             x++;
             y=(x-xi)*slope+yi;
         }
@@ -158,7 +157,7 @@ size, string cluster_orientation) {
             for(int z=x-size/2;z<=x+size/2;z++){
                 std::vector<int> c = {z,y};
                 std::vector<int> m = cart_to_matrix(ImageStorage[stored].nrows, c);
-                ImageStorage[stored].C[m[0]][m[1]] = color;}
+                ImageStorage[stored].C[m[1]][m[0]] = color;}
             x+=1/abs(slope);
             y+=slope/abs(slope);
         }
@@ -281,7 +280,7 @@ double ImageProcessor::Variance(std::string stored){
 }
 
 void ImageProcessor::PlotAbsFreq(std::string stored, std::string filename){
-    if (!IsStored(stored)) {
+    if (!IsStored(stored)) { 
         std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
         return;
     }

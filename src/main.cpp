@@ -38,6 +38,7 @@ int main(){
     Proc.PlotAbsFreq("glassware_noisy.ascii.pgm", "GlassWare_AbsFreq.pdf");
     Proc.PlotRelFreq("glassware_noisy.ascii.pgm", "GlassWare_RelFreq.pdf");
     Proc.Image2DHist("glassware_noisy.ascii.pgm", "GlassWare_Hist2D.pdf");
+    Proc.Image2DHist("A", "A_2D.pdf");
 
     //Media
     std::cout << "ORIGINAL IMAGE VALUES" << std::endl;
