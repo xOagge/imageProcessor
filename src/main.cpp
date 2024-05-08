@@ -4,6 +4,8 @@
 using namespace std;
 
 int main(){
+    std:cout<< "\n\n\nPROGRAM STARTED:\n";
+
     ImageProcessor Proc;
 
     //read glassware, invert and sum original and inverted-------------------------------
@@ -26,6 +28,17 @@ int main(){
     Proc.addSegment("A", P4, P5);
     Proc.ProduceImage("A");
 
+    //Make A image with reduced noise
+    Proc.ApplyMedian("glassware_noisy.ascii.pgm", "glassware_Median", 3);
+    Proc.ProduceImage("glassware_Median");
+    Proc.ApplyMatrix("glassware_Median", "glassware_median_sharp", Proc.GetMatrix("Sharp"), false);
+    Proc.ApplyMatrix("glassware_Median", "glassware_median_gaussian", Proc.GetMatrix("Gaussian"), true);
+    Proc.ApplyMatrix("glassware_median_sharp", "glassware_median_sharp_gaussian", Proc.GetMatrix("Gaussian"), true);
+    Proc.ProduceImage("glassware_median_sharp");
+    Proc.ProduceImage("glassware_median_gaussian");
+    Proc.ProduceImage("glassware_median_sharp_gaussian");
+
+
     //SaltAndPepper-------------------------------
     Proc.SaltAndPepper("glassware_noisy.ascii.pgm", 30, "SaltAndPepper");
     Proc.ProduceImage("SaltAndPepper");
@@ -33,6 +46,7 @@ int main(){
     //gaussian-------------------------------
     Proc.GaussianNoise("glassware_noisy.ascii.pgm", 20 , "GaussianNoise");
     Proc.ProduceImage("GaussianNoise");
+
 
     //frequencies and root-------------------------------
     Proc.PlotAbsFreq("glassware_noisy.ascii.pgm", "GlassWare_AbsFreq.pdf");

@@ -8,16 +8,15 @@
 #include <string>
 #include <map>
 #include <random>
+#include "Matrix2D.h"
 
 #include "PlotsMaker.h"
-
-using namespace std;
 
 struct Image;
 
 class ImageProcessor{
     public:
-        ImageProcessor() = default;
+        ImageProcessor();
         ~ImageProcessor() = default;
 
         //manipulate pgm files
@@ -27,9 +26,11 @@ class ImageProcessor{
         void ImageSum(std::string img1, std::string img2, std::string result);
         void ProduceImage(std::string stored);
         void addSegment(std::string stored, std::vector<int> start, std::vector<int> end, int color=0, int
-size=2, string cluster_orientation="H"); //not working properly
+size=2, std::string cluster_orientation="H"); //not working properly
         void SaltAndPepper(std::string stored, int p, std::string filename);
         void GaussianNoise(std::string stored, double stdv, std::string filename);
+        void ApplyMatrix(std::string stored, std::string filename, Matrix2D matrix, bool Norm);
+        void ApplyMedian(std::string stored, std::string filename, int dim);
 
         //frequencies and root
         std::vector<int> GetColourFreq(std::string stored);
@@ -39,6 +40,8 @@ size=2, string cluster_orientation="H"); //not working properly
         void PlotAbsFreq(std::string stored, std::string filename);
         void PlotRelFreq(std::string stored, std::string filename);
         void Image2DHist(std::string stored, std::string filename);
+        Matrix2D GetMatrix(std::string matrix);
+        
 
     private:
         //auxiliar methods
@@ -50,9 +53,10 @@ size=2, string cluster_orientation="H"); //not working properly
         double Gaussian(double stdv);
         void PrintColorCoordinates(std::string stored, int color);
         std::vector<int> cart_to_matrix(int nrows, std::vector<int> c);
-
+        int Median(std::vector<int> M);
 
         std::map<std::string, Image> ImageStorage; //filename->Image
+        std::map<std::string, Matrix2D> MatrixStorage;
         PlotsMaker RProcessor;
 
 };

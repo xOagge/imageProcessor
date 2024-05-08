@@ -1,5 +1,41 @@
 #include "ImageProcessor.h"
+#include <algorithm>
+#include "gauss.h"
 using namespace std;
+
+ImageProcessor::ImageProcessor(){
+    //reducing noise
+    std::vector<std::vector<double>> S = {
+        {0.0, -1.0, 0.0},
+        {-1.0, 5.0, -1.0},
+        {0.0, -1.0, 0.0}
+    };
+
+    std::vector<std::vector<double>> B = {
+        {1.0, 1.0, 1.0},
+        {1.0, 0.0, 1.0},
+        {1.0, 1.0, 1.0},
+    };
+
+    std::vector<std::vector<double>> M = {
+        {1.0, 1.0, 1.0},
+        {1.0, 1.0, 1.0},
+        {1.0, 1.0, 1.0},
+    };
+
+    std::vector<std::vector<double>> G = createGaussianMatrix(3, 2);
+
+
+    Matrix2D Sharp(S);
+    Matrix2D Box(B);
+    Matrix2D Media(M);
+    Matrix2D Gaussian(G);
+
+    MatrixStorage["Sharp"] = Sharp;
+    MatrixStorage["Box"] = Box;
+    MatrixStorage["Media"] = Media;
+    MatrixStorage["Gaussian"] = Gaussian;
+}
 
 void ImageProcessor::CreateEmpty(std::string filename, int ncols, int nrows, int N){
     if(IsStored(filename)){
@@ -79,10 +115,7 @@ void ImageProcessor::ImageSum(std::string img1, std::string img2, std::string re
 
 void ImageProcessor::ProduceImage(std::string stored) {
     // Check if the image exists
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
 
     Image image = ImageStorage[stored];
 
@@ -111,10 +144,8 @@ void ImageProcessor::ProduceImage(std::string stored) {
 
 void ImageProcessor::addSegment(std::string stored, std::vector<int> start, std::vector<int> end, int color, int
 size, string cluster_orientation) {
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+
+    if (!IsStored(stored)) {return;}
 
     if (start.size() != 2 || end.size() != 2) {
         std::cout << "Error: Invalid start or end points." << std::endl;
@@ -165,10 +196,7 @@ size, string cluster_orientation) {
 }
 
 void ImageProcessor::SaltAndPepper(std::string stored, int p, std::string filename){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
     Image image = CopySettings(stored);
 
     //iterate image to add SaltAndPepper
@@ -184,10 +212,7 @@ void ImageProcessor::SaltAndPepper(std::string stored, int p, std::string filena
 }
 
 void ImageProcessor::GaussianNoise(std::string stored, double stdv, std::string filename){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
     Image image = CopySettings(stored);
 
     //iterate image to add gaussian noise
@@ -207,12 +232,77 @@ void ImageProcessor::GaussianNoise(std::string stored, double stdv, std::string 
     ImageStorage[filename] = image;
 }
 
+void ImageProcessor::ApplyMatrix(std::string stored, std::string filename, Matrix2D matrix, bool Norm) {
+    // Verifications
+    if (!IsStored(stored)) return;
+    if (matrix.GetMatrix().empty()) return;
+    if(Norm){matrix.Normalize();}
+
+    std::vector<std::vector<double>> M = matrix.GetMatrix();
+    // Declare variables
+    Image image = CopySettings(stored);
+    int ni = M.size() / 2;
+    int nj = M[0].size() / 2;
+    
+    // Iterate stored image to define new image pixels
+    for (int col = 0; col < image.ncols; col++) {
+        for (int row = 0; row < image.nrows; row++) {
+            double sum = 0;
+
+            // Iterate over neighborhood
+            for (int i = -ni; i <= ni; i++) {
+                for (int j = -nj; j <= nj; j++) {
+                    int new_col = col + i;
+                    int new_row = row + j;
+                    
+                    // Check bounds
+                    if (new_col < 0 || new_col >= image.ncols || new_row < 0 || new_row >= image.nrows){continue;}
+                    sum += (double)(ImageStorage[stored].C[new_col][new_row]) * M[i + ni][j + nj];
+                }
+            }
+            image.C[col][row] = (int)(sum);
+        }
+    }
+    
+    ImageStorage[filename] = image;
+}
+
+void ImageProcessor::ApplyMedian(std::string stored, std::string filename, int dim) {
+    // Verifications
+    if (!IsStored(stored)) return;
+    if(dim%2 == 0) return;
+
+    // Declare variables
+    Image image = CopySettings(stored);
+    int ni = dim / 2;
+    int nj = dim / 2;
+    
+    // Iterate stored image to define new image pixels
+    for (int col = 0; col < image.ncols; col++) {
+        for (int row = 0; row < image.nrows; row++) {
+            std::vector<int> Values;
+
+            // Iterate over neighborhood
+            for (int i = -ni; i <= ni; i++) {
+                for (int j = -nj; j <= nj; j++) {
+                    int new_col = col + i;
+                    int new_row = row + j;
+                    // Check bounds
+                    if (new_col < 0 || new_col >= image.ncols || new_row < 0 || new_row >= image.nrows){continue;}
+                    Values.push_back(ImageStorage[stored].C[new_col][new_row]);
+                }
+            }
+            int Color = Median(Values);
+            image.C[col][row] = Color;
+        }
+    }
+    
+    ImageStorage[filename] = image;
+}
+
 //frequencies and root
 std::vector<int> ImageProcessor::GetColourFreq(std::string stored){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return {};
-    }
+    if (!IsStored(stored)) {return {};}
     //create vector to store frequencies
     std::vector<int> AbsFrequencies;
     AbsFrequencies.resize(ImageStorage[stored].N+1, 0);
@@ -227,10 +317,7 @@ std::vector<int> ImageProcessor::GetColourFreq(std::string stored){
 }
 
 std::vector<double> ImageProcessor::GetColourRelFreq(std::string stored){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return {};
-    }
+    if (!IsStored(stored)) {return {};}
     //get absolute frequencies and total number of pixels
     std::vector<int> AbsFrequencies = GetColourFreq(stored);
     int Npixels = ImageStorage[stored].ncols * ImageStorage[stored].nrows;
@@ -247,10 +334,7 @@ std::vector<double> ImageProcessor::GetColourRelFreq(std::string stored){
 }
 
 double ImageProcessor::MedColor(std::string stored){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return {};
-    }
+    if (!IsStored(stored)) {return {};}
     int Sum = 0;
     int Npixels = ImageStorage[stored].ncols * ImageStorage[stored].nrows;
     for (int col = 0; col < ImageStorage[stored].ncols; col++){
@@ -262,10 +346,7 @@ double ImageProcessor::MedColor(std::string stored){
 }
 
 double ImageProcessor::Variance(std::string stored){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return {};
-    }
+    if (!IsStored(stored)) {return {};}
     double diff;
     double Media = MedColor(stored);
     int Npixels = ImageStorage[stored].ncols * ImageStorage[stored].nrows;
@@ -280,10 +361,7 @@ double ImageProcessor::Variance(std::string stored){
 }
 
 void ImageProcessor::PlotAbsFreq(std::string stored, std::string filename){
-    if (!IsStored(stored)) { 
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
     // Get the absolute frequencies
     std::vector<int> AbsFrequencies = GetColourFreq(stored);
     //plot
@@ -291,10 +369,7 @@ void ImageProcessor::PlotAbsFreq(std::string stored, std::string filename){
 }
 
 void ImageProcessor::PlotRelFreq(std::string stored,std::string filename){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
     // Get the relative frequencies
     std::vector<double> AbsFrequencies = GetColourRelFreq(stored);
     //plot
@@ -302,14 +377,15 @@ void ImageProcessor::PlotRelFreq(std::string stored,std::string filename){
 }
 
 void ImageProcessor::Image2DHist(std::string stored, std::string filename){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
     // Get the relative frequencies
     std::vector<std::vector<int>> Image = ImageStorage[stored].C;
     //plot
     RProcessor.MakeHistogram2D(Image, filename);
+}
+
+Matrix2D ImageProcessor::GetMatrix(std::string matrix){
+    return MatrixStorage[matrix];
 }
 
 //auxiliar methods
@@ -326,8 +402,10 @@ bool ImageProcessor::IsStored(std::string stored){
     auto it = ImageStorage.find(stored);
     if (it == ImageStorage.end()) {
         // Key does not exist in the map
+        //std::cout << "File '" << stored << "' does not exist." << std::endl;
         return false;
     }
+    //std::cout << "File '" << stored << "' exist." << std::endl;
     return true;
 }
 
@@ -388,10 +466,7 @@ double ImageProcessor::Gaussian(double stdv) {
 }
 
 void ImageProcessor::PrintColorCoordinates(std::string stored, int color){
-    if (!IsStored(stored)) {
-        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
-        return;
-    }
+    if (!IsStored(stored)) {return;}
     for (int col = 0; col < ImageStorage[stored].ncols; col++){
         for (int row = 0; row < ImageStorage[stored].nrows; row++) {
             if(ImageStorage[stored].C[col][row] == color){std::cout << "{ " << col << " , " << row << " } " << std::endl;}
@@ -405,4 +480,15 @@ std::vector<int> ImageProcessor::cart_to_matrix(int nrows, std::vector<int> c){
     m.push_back(nrows - c[1]);
     m.push_back(c[0]);
     return m;
+}
+
+int ImageProcessor::Median(std::vector<int> M){
+    sort(M.begin(), M.end());
+    int Mediana;
+    if (M.size() % 2 == 0){
+        Mediana = (M[M.size()/2]+M[((M.size()/2)-1)])/2;
+      } else{
+        Mediana = M[(M.size()-1)/2];
+      }
+    return Mediana;
 }
