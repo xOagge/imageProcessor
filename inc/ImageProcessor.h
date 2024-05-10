@@ -31,6 +31,9 @@ size=2, std::string cluster_orientation="H"); //not working properly
         void GaussianNoise(std::string stored, double stdv, std::string filename);
         void ApplyMatrix(std::string stored, std::string filename, Matrix2D matrix, bool Norm);
         void ApplyMedian(std::string stored, std::string filename, int dim);
+        void Threshholding(std::string stored, std::string filename, doubled threshhold);
+        void HoughTransform(std::string stored, std::string edged, std::string filename);
+        void Mediana_Quadrado(std::string stored, std::string filename);
 
         //frequencies and root
         std::vector<int> GetColourFreq(std::string stored);
