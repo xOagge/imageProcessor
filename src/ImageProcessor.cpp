@@ -492,3 +492,163 @@ int ImageProcessor::Median(std::vector<int> M){
       }
     return Mediana;
 }
+
+void ImageProcessor::Threshholding(std::string stored, std::string filename, double threshhold){
+    if (!IsStored(stored)) {
+        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
+        return;
+    }
+    Image image = CopySettings(stored);
+    // Iterate over each pixel in the image
+    for (int col = 1; col < image.ncols-1; col++) {
+        for (int row = 1; row < image.nrows-1; row++) {
+            double x = abs(ImageStorage[stored].C[col-1][row]-ImageStorage[stored].C[col+1][row])/2;
+            double y = abs(ImageStorage[stored].C[col][row-1]-ImageStorage[stored].C[col][row+1])/2;
+            double gradient = sqrt(x*x+y*y);
+            if(gradient>threshhold){
+                image.C[col][row]=image.N;;
+            }
+        }
+    }
+    ImageStorage[filename] = image;
+}
+
+void ImageProcessor::HoughTransform(std::string stored,std::string edged,std::string filename){
+    //verificar q o ficheiro existe
+    if (!IsStored(stored)) {
+        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
+        return;
+    }
+    if (!IsStored(edged)) {
+        std::cout << "Error: File '" << edged << "' does not exist." << std::endl;
+        return;
+    }
+
+    //criar as funções para cada pixel branco
+    std::vector<std::function<double(double)>> hough_functions;
+    for (int col = 0; col < ImageStorage[edged].ncols; col++) {
+        for (int row = 0; row < ImageStorage[edged].nrows; row++) {
+            if (ImageStorage[edged].C[col][row]==ImageStorage[edged].N){
+                std::function<double(double)> function = [row,col](double a)-> double { return col*cos(a)+row*sin(a);};
+                hough_functions.push_back(function);
+            }
+        }
+    }
+    //contabilizar num histograma de parâmteros
+    TCanvas c2("c2", "hough parameter space", 1000, 1000);
+    double a_max=M_PI;
+    double p_max=sqrt(ImageStorage[edged].ncols*ImageStorage[edged].ncols+ImageStorage[edged].nrows*ImageStorage[edged].nrows);
+    int as=200;
+    int ps=200;
+    double a_step = a_max/as;
+    double p_step = p_max/ps;
+    int max=0;
+    TH2D hough_hist("hough_hist","hough_hist",as,0,a_max,ps,0,p_max);
+    for (int r = 0; r < ps; r++) {
+        for (int n = 0; n < as; n++) {
+            double p = p_step * r + p_step / 2;
+            double a = a_step * n + a_step / 2;
+            int counter = 0;
+            for (int i = 0; i < hough_functions.size(); i++) {
+                if ((hough_functions[i](a - a_step / 2) > p - p_step / 2 && hough_functions[i](a - a_step / 2) < p + p_step / 2) ||
+                    (hough_functions[i](a + a_step / 2) > p - p_step / 2 && hough_functions[i](a + a_step / 2) < p + p_step / 2)) {
+                    counter += 1;
+                }
+            }
+            hough_hist.Fill(a, p, counter);
+            if (counter > max) {
+                max = counter;
+            }
+        }
+    }
+    hough_hist.Draw("colz");
+    c2.Update();
+    c2.SaveAs((filename+"_hough_histogram_space.pdf").c_str());
+    c2.WaitPrimitive();
+
+    //localizar os spots do histograma
+    vector<vector<double>> yellow_spots;
+
+    cout<<"MAX: "<<max<<endl;
+    for (double r=0; r<ps; r++){
+        for (double n=0; n<as; n++){
+            double p=p_step*r+p_step/2;
+            double a=a_step*n+a_step/2;
+            int counter=0;
+            for (int i=0; i<hough_functions.size(); i++){
+                if ((hough_functions[i](a-a_step/2)>p-p_step/2 && hough_functions[i](a-a_step/2)<p+p_step/2)||
+                (hough_functions[i](a+a_step/2)>p-p_step/2 && hough_functions[i](a+a_step/2)<p+p_step/2)){
+                    counter+=1;
+                }
+            }
+            if(counter>max*0.9){
+                vector<double> yellow_spot;
+                yellow_spot.push_back(a);
+                yellow_spot.push_back(p);
+                yellow_spot.push_back(counter);
+                yellow_spots.push_back(yellow_spot);
+            }
+        }
+    }
+
+    //adicionar segmentos
+    Image image = CopySettings(edged);
+    image.C = ImageStorage[edged].C;
+    for (int i=0; i<yellow_spots.size();i++){
+        double a=yellow_spots[i][0];
+        double p=yellow_spots[i][1];
+        std::function<double(double)> spot = [a,p](double x)-> double { return (p-cos(a)*x)/sin(a);};
+        for (int col = 0; col < ImageStorage[edged].ncols; col++) {
+            int row = spot(col);
+            if (row<ImageStorage[edged].nrows && row>=0){image.C[col][row]=ImageStorage[edged].N+1;}
+        }
+        cout<<yellow_spots[i][0]<<","<<yellow_spots[i][1]<<","<<yellow_spots[i][2]<<endl;
+    }
+
+    //tornar num histogtama
+    double nx = image.C.size(); // Number of bins along x-axis
+    double ny = image.C[0].size(); // Number of bins along y-axis
+    TCanvas c3("c3", "hough lines", nx, ny);
+    TH2F stored_hist("hist2D", filename.c_str(), nx, 0, nx, ny, 0, ny);    
+    for (int col = 0; col < nx; col++) {
+        for (int row = 0; row < ny; row++) {
+            if(image.C[col][row]==image.N+1){ stored_hist.Fill(col+0.5, ny-row+0.5, image.C[col][row]+100);}
+            else{stored_hist.Fill(col+0.5, ny-row+0.5, image.C[col][row]);}
+        }
+    }
+    gStyle->SetPalette(kGreyScale);
+    stored_hist.SetMinimum(-0.1);
+    stored_hist.Draw("colz");
+    c3.Update();
+    c3.SaveAs((filename+"_hough_lines.pdf").c_str());
+    c3.WaitPrimitive();
+}
+
+void ImageProcessor::Mediana_Quadrado(std::string stored, std::string filename) {
+    if (!IsStored(stored)) {
+        std::cout << "Error: File '" << stored << "' does not exist." << std::endl;
+        return;
+    }
+    Image image = CopySettings(stored);
+
+    int r = 1;
+    //iteração
+    for (int i = 0; i < image.ncols; i++) {
+        for (int j = 0; j < image.nrows; j++) {
+            vector<int> ord; //vetor para recolher os valores à volta
+
+            for (int ni = -r; ni <= r; ni++) { 
+                for (int nj = -r; nj <= r; nj++) { 
+                    if ((i+ni) >= 0 && (j+nj) >=0 && (i+ni) < image.ncols && (j+nj) < image.nrows) {
+                        ord.push_back(ImageStorage[stored].C[i+ni][j+nj]); //adicionar os valores
+                    } 
+                } 
+            }
+            //ordenar e recolher o elemnto central
+            sort(ord.begin(),ord.end());
+            if (ord.size()%2) {image.C[i][j] = ord[ord.size()/2]; } //verificar se é par ou impar
+            else {image.C[i][j] = (ord[ord.size()/2]+ord[ord.size()/2-1])/2; }
+        }
+    }
+    ImageStorage[filename] = image;
+}
