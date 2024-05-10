@@ -59,5 +59,14 @@ int main(){
     std::cout <<"Media: " <<  Proc.MedColor("glassware_noisy.ascii.pgm") << std::endl;
     //Variance
     std::cout <<"Variance: " <<  Proc.Variance("glassware_noisy.ascii.pgm") << std::endl;
+
+    //tranformada Hough
+    Proc.Mediana_Quadrado("glassware_noisy.ascii.pgm", "Mediana_Quadrado");
+    Proc.ProduceImage("Mediana_Quadrado");
+    Proc.Threshholding("Mediana_Quadrado", "threshholding", 10);
+    Proc.ProduceImage("threshholding");
+    //Hough
+    Proc.HoughTransform("glassware_noisy.ascii.pgm", "threshholding", "Hough");
+    
     return 0;
 }
