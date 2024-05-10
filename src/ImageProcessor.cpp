@@ -1,6 +1,11 @@
 #include "ImageProcessor.h"
 #include <algorithm>
 #include "gauss.h"
+#include <TCanvas.h>
+#include <TH2F.h>
+#include <TStyle.h>
+#include <TColor.h>
+
 using namespace std;
 
 ImageProcessor::ImageProcessor(){
